@@ -338,6 +338,96 @@
     .signal-bars span:nth-child(3) { height: 78%; }
     .signal-bars span:nth-child(4) { height: 100%; }
 
+    /* ── Cost panel ── */
+    .cost-panel {
+      background: var(--dash-card);
+      border: 1px solid var(--dash-border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .cost-header {
+      padding: .75rem 1.2rem;
+      border-bottom: 1px solid var(--dash-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .cost-header-left {
+      font-size: .78rem;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--dash-muted);
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+    .cost-price-input {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      font-size: .78rem;
+      color: var(--dash-muted);
+    }
+    .cost-price-input input {
+      width: 80px;
+      background: var(--dash-bg);
+      border: 1px solid var(--dash-border);
+      border-radius: 6px;
+      color: var(--dash-text);
+      font-family: var(--font-mono);
+      font-size: .8rem;
+      padding: .25rem .5rem;
+      text-align: right;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .cost-price-input input:focus { border-color: var(--dash-accent); }
+    .cost-metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    .cost-metric {
+      padding: 1.1rem 1.4rem;
+      position: relative;
+    }
+    .cost-metric:first-child { border-right: 1px solid var(--dash-border); }
+    .cost-metric::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--cm-accent, var(--dash-accent));
+      opacity: .6;
+    }
+    .cost-metric-label {
+      font-size: .7rem;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--dash-muted);
+      margin-bottom: .4rem;
+    }
+    .cost-metric-value {
+      font-family: var(--font-mono);
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--dash-text);
+      line-height: 1;
+    }
+    .cost-metric-unit {
+      font-family: var(--font-mono);
+      font-size: .75rem;
+      color: var(--dash-muted);
+      margin-left: .2rem;
+    }
+    .cost-metric-sub {
+      font-size: .7rem;
+      color: var(--dash-muted);
+      margin-top: .35rem;
+    }
+
     /* ── Grid helpers ── */
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
     @media (max-width: 768px) {
@@ -490,6 +580,37 @@
       <div class="stat-icon"><i class="ti ti-arrow-down-circle"></i></div>
       <div class="stat-label">Power L1</div>
       <div><span class="stat-value" id="v-power-l1">—</span><span class="stat-unit">W</span></div>
+    </div>
+  </div>
+
+  <!-- ── Cost ── -->
+  <div class="section-label" style="margin-top:1.5rem;"><i class="ti ti-currency-euro me-1"></i>Current Cost Rate</div>
+  <div class="cost-panel">
+    <div class="cost-header">
+      <div class="cost-header-left"><i class="ti ti-bolt"></i> Based on active power</div>
+      <div class="cost-price-input">
+        <span>€</span>
+        <input type="number" id="kwh-price" value="0.26699" step="0.00001" min="0">
+        <span>/ kWh</span>
+      </div>
+    </div>
+    <div class="cost-metrics">
+      <div class="cost-metric" style="--cm-accent: #00d4aa;">
+        <div class="cost-metric-label"><i class="ti ti-clock" style="margin-right:.3rem;"></i>Per Minute</div>
+        <div>
+          <span class="cost-metric-value" id="cost-per-min">—</span>
+          <span class="cost-metric-unit">¢</span>
+        </div>
+        <div class="cost-metric-sub" id="cost-per-min-eur">— €/min</div>
+      </div>
+      <div class="cost-metric" style="--cm-accent: #f59e0b;">
+        <div class="cost-metric-label"><i class="ti ti-calendar-time" style="margin-right:.3rem;"></i>Per Hour</div>
+        <div>
+          <span class="cost-metric-value" id="cost-per-hour">—</span>
+          <span class="cost-metric-unit">¢</span>
+        </div>
+        <div class="cost-metric-sub" id="cost-per-hour-eur">— €/hr</div>
+      </div>
     </div>
   </div>
 
@@ -714,10 +835,35 @@ function fmtGasTs(ts) {
   return `20${yr}-${mo}-${day} ${hh}:${mm}:${ss}`;
 }
 
+// ── Cost calculation ──────────────────────────────────────────────────────────
+const priceInput = el('kwh-price');
+let kwhPrice = parseFloat(priceInput.value);
+priceInput.addEventListener('input', () => {
+  kwhPrice = parseFloat(priceInput.value) || 0;
+  if (lastWatts !== null) updateCost(lastWatts);
+});
+
+let lastWatts = null;
+
+function updateCost(watts) {
+  lastWatts = watts;
+  // kWh price → cost per watt-hour = price / 1000
+  // cost per minute = watts * (1/60) watt-hours * (price/1000)
+  const perMin  = watts * kwhPrice / 1000 / 60;   // €/min
+  const perHour = watts * kwhPrice / 1000;          // €/hr
+
+  el('cost-per-min').textContent  = (perMin  * 100).toFixed(4);  // cents
+  el('cost-per-hour').textContent = (perHour * 100).toFixed(3);  // cents
+  el('cost-per-min-eur').textContent  = `€ ${perMin.toFixed(5)} /min`;
+  el('cost-per-hour-eur').textContent = `€ ${perHour.toFixed(4)} /hr`;
+}
+
 // ── Render ────────────────────────────────────────────────────────────────────
 function render(data, history) {
   // Power
-  updateGauge(data.active_power_w ?? 0);
+  const watts = data.active_power_w ?? 0;
+  updateGauge(watts);
+  updateCost(watts);
   el('v-current').textContent = fmt(data.active_current_a, 3);
   el('v-current-l1').textContent = `L1 ${fmt(data.active_current_l1_a, 3)} A`;
   el('v-voltage').textContent = fmt(data.active_voltage_l1_v, 1);
