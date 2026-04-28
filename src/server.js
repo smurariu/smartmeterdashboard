@@ -18,9 +18,12 @@ const path = require("path");
 const PORT = process.env.PORT || 4000;
 const DATA_URL = process.env.DATA_URL || "http://192.168.178.38/api/v1/data"; // ← change this
 const POLL_INTERVAL_MS = parseInt(process.env.POLL_INTERVAL || "500", 10);
+const COST_KWH = process.env.COST_KWH || 0.26;
 
 // ── App ───────────────────────────────────────────────────────────────────────
 const app = express();
+app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use(express.json());
 const server = http.createServer(app);
 const io = new Server(server);
 
@@ -66,6 +69,8 @@ async function fetchData() {
       history.t2.shift();
     }
 
+    data.kWh_price = COST_KWH;
+    
     lastData = data;
     io.emit("meter:update", { data, history });
   } catch (err) {

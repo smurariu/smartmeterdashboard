@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  smartmeter-dashboard:
+    build: ./src
+    container_name: smartmeter-dashboard
+    restart: unless-stopped
+    ports:
+      - "4000:3000"
+    environment:
+      - DATA_URL=http://192.168.178.38/api/v1/data   # ← change to your meter IP
+      - PORT=3000
+      - POLL_INTERVAL=500
+      - COST_KWH=0.26699
