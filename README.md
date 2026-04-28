@@ -3,6 +3,8 @@
 Real-time P1 smart meter dashboard built with **Node.js + Socket.IO + Tabler UI**.
 Polls your meter's HTTP JSON endpoint and streams live data to all connected browsers.
 
+![Smart Meter Dashboard](smartMeterDashboard.png)
+
 ## Features
 - Live power gauge (animated arc)
 - Electricity import T1 / T2 breakdown
